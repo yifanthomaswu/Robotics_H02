@@ -5,21 +5,30 @@ with open("log.txt") as f:
     data = f.read()
 
 data = data.split('\n')
-# print data
-ll = [row.split('\t') for row in data]
-x = ll[:,0]
-# print x
-y = ll[:,1]
+del data[-1]
+x = [row.split('\t')[0] for row in data]
+del x[-1]
+y0 = [row.split('\t')[1] for row in data]
+del y0[-1]
+y1 = [row.split('\t')[2] for row in data]
+del y1[-1]
+y2 = [row.split('\t')[3] for row in data]
+del y2[-1]
+y3 = [row.split('\t')[4] for row in data]
+del y3[-1]
 
-fig = plt.figure()
-
-ax1 = fig.add_subplot(111)
+fig, ax1 = plt.subplots()
 
 ax1.set_title("Plot title...")
-ax1.set_xlabel('your x label..')
-ax1.set_ylabel('your y label...')
+ax1.set_xlabel('Time')
+ax1.set_ylabel('Angle')
 
-ax1.plot(x,y, c='r', label='the data')
+ax2 = ax1.twinx()
+
+ax1.plot(x,y0, 'r')
+ax1.plot(x,y1, 'r')
+ax2.plot(x,y2, 'g')
+ax2.plot(x,y3, 'g')
 
 leg = ax1.legend()
 
