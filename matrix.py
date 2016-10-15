@@ -1,7 +1,7 @@
 with open("data.txt") as f:
     data = f.read()
 
-num = 4
+num = 10
 data = data.split('\n')
 del data[-1]
 print(data)
