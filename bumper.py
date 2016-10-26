@@ -48,12 +48,27 @@ def reverse():
 	move(-5.4)
 	return
 
-touch_port = 1
-interface.sensorEnable(touch_port, brickpi.SensorType.SENSOR_TOUCH)
-result = interface.getSensorValue(touch_port)
-if (!result) :
-  print("Error reading sensor")
-  return
-touched = result[0]
+def isTouchedL()
+	result = interface.getSensorValue(touch_port)
+	if result :
+		touched = result[0]
+		return touched
+	else
+		print("Error reading sensor")
+		return -1
+	
+def bump():
+	while (true):
+		move(1)
+		if isTouchedL() :
+		  reverse()
+		  right90deg()
+	return
 
+touch_portL = 1
+touch_portR = 2
+interface.sensorEnable(touch_portL, brickpi.SensorType.SENSOR_TOUCH)
+interface.sensorEnable(touch_portR, brickpi.SensorType.SENSOR_TOUCH)
+
+#bump()
 interface.terminate()
