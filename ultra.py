@@ -70,6 +70,6 @@ def ultra(dist):
 US_port = 2
 interface.sensorEnable(US_port, brickpi.SensorType.SENSOR_ULTRASONIC);
 
-dist = 35
+dist = 20
 ultra(dist)
 interface.terminate()
