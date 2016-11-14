@@ -155,13 +155,12 @@ def withinRange(x, y, Ax, Ay, Bx, By):
 def getWall(x, y, theta):
     global mymap
     wall = None
-    print len(mymap.walls)
     for (Ax, Ay, Bx, By) in mymap.walls:
         m = calcM(x, y, theta, Ax, Ay, Bx, By)
         if (m < 0):
             continue
         interX, interY = x + m * math.cos(theta), y + m * math.sin(theta)
-        print "m= ", m, "with rage ", withinRange(interX, interY, Ax, Ay, Bx, By)
+        #print "m= ", m, "with rage ", withinRange(interX, interY, Ax, Ay, Bx, By)
         if (withinRange(interX, interY, Ax, Ay, Bx, By) and (wall is None or wall[1] > m)):
                 wall = ((Ax, Ay, Bx, By), m)
     return wall
@@ -171,16 +170,11 @@ sd = 0.48305
 K = 0.0000001
 
 def calculateLikelihood(x, y, theta, z):
-    #m = math.tan(theta)
-    #def calcY(X):
-    #    return y + m * (X-x)
-    #def calcX(Y):
-    #    return ((Y - y) / m) + x
-    wall = getWall(x, y, t)
+    wall = getWall(x, y, theta)
     m = wall[1]
-    print "top= ", float(-((z-m)**2))
+    #print "top= ", float(-((z-m)**2))
     likelihood = math.exp(float(-((z-m)**2)) / (2*(sd**2)))
-    print "like= ", likelihood
+    #print "like= ", likelihood
     return likelihood + K
 
 def move(angle):
@@ -192,7 +186,7 @@ def move(angle):
 def moveD(distance):
     angle = distance * (4.95 / 10)
     move(angle)
-    #updateCloudD(distance)
+    updateCloudD(distance)
     return
 
 def compare(reference, current, error) :
@@ -210,7 +204,7 @@ def left90deg():
     return
 
 def turn(angle):
-    #updateCloudT(angle)
+    updateCloudT(angle)
     angle = math.degrees(angle) * (5.69 / 90)
     interface.increaseMotorAngleReferences(motors,[-angle,angle])
     while (compare(interface.getMotorAngleReferences(motors), interface.getMotorAngles(motors), 0.1)):
@@ -241,15 +235,16 @@ def updateCloudD(D):
     particles.data = [(x + (D + random.gauss(0, sdX))*math.cos(t), y + (D + random.gauss(0, sdX))*math.sin(t), t + random.gauss(0, 0.01), w) for (x, y, t, w) in particles.data]
     return
 
-#def updateCloudT(A):
-#    particles = [(x, y, t + A + random.gauss(0, 0.01), w) for (x, y, t, w) in particles]
-#    return
+def updateCloudT(A):
+    global particles
+    particles.data = [(x, y, t + A + random.gauss(0, 0.01), w) for (x, y, t, w) in particles.data]
+    return
 
 def currentPosition():
     global particles
-    xBar = sum([(x * w) for x, _, _, w in particles])
-    yBar = sum([y * w for (_, y, _, w) in particles])
-    tBar = sum([t * w for (_, _, t, w) in particles])
+    xBar = sum([(x * w) for x, _, _, w in particles.data])
+    yBar = sum([y * w for (_, y, _, w) in particles.data])
+    tBar = sum([t * w for (_, _, t, w) in particles.data])
     return (xBar, yBar, tBar)
 
 def navigateToWaypoint(X, Y):
@@ -287,21 +282,70 @@ def resample():
                 newp[i] = particles.data[j - 1]
                 break
     particles.data = newp
+    #Set all w to 1/N
+    particles.data = [(x, y, t, float(1) / particles.n) for (x, y, t, _) in particles.data]
     return
 
-#particles.n = 100
-particles.data = [(10, 10, 0, float(1) / particles.n)] * particles.n
-particles.draw()
-while True:
-    move20()
-    updateCloudD(20)
+def readSonar():
     sumSonar = 0
     for i in range(1,6):
         sumSonar += interface.getSensorValue(port)[0]
     meanSonar = sumSonar / 5
-    print "sonar = ", meanSonar
-    particles.data = [(x, y, t, calculateLikelihood(x, y, t, meanSonar)) for (x, y, t, w) in particles.data]
-    normalize()
-    resample()
+    return meanSonar
+
+waypoints = [(84 ,30),
+             (180, 30),
+             (180, 54),
+             (138, 54),
+             (138, 168),
+             (114, 168),
+             (114, 84),
+             (84, 84),
+             (84, 30)]
+
+def wayPointNav():
+    global particles
+    particles.data = [(waypoints[0][0], waypoints[0][1], 0, float(1) / particles.n)] * particles.n
     particles.draw()
-    time.sleep(3)
+    zP = [30, 30, 138, 42, 30, 84, 84, 30]
+    i = 0 
+    for waypoint in waypoints[1:]:
+        navigateToWaypoint(waypoint[0], waypoint[1])
+        
+        z = readSonar()
+        z = zP[i]
+        i += 1
+        print "sonar = ", z
+        particles.data = [(x, y, t, calculateLikelihood(x, y, t, z)) for (x, y, t, w) in particles.data]
+        normalize()
+        resample()
+        
+        particles.draw()
+        time.sleep(1)
+    return
+    
+def MCLTesting():
+    global particles
+    particles.data = [(0, 10, 0, float(1) / particles.n)] * particles.n
+    particles.draw()
+    zP = 210
+    while True:
+        move20()
+        zP -= 20
+        updateCloudD(20)
+        z = readSonar()
+        print "sonar = ", zP
+        particles.data = [(x, y, t, calculateLikelihood(x, y, t, zP)) for (x, y, t, w) in particles.data]
+        normalize()
+        resample()
+        particles.draw()
+        time.sleep(1)
+        if (zP < 20):
+            print "wall reached"
+            break
+    return
+
+    
+particles.n = 100
+#MCLTesting()
+wayPointNav()
