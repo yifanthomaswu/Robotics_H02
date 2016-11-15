@@ -1,4 +1,4 @@
-#!/usr/bin/env python 
+#!/usr/bin/env python
 
 # Some suitable functions and data structures for drawing a map and particles
 
@@ -87,12 +87,12 @@ class Map:
 # Simple Particles set
 class Particles:
     def __init__(self):
-        self.n = 10;    
+        self.n = 10;
         self.data = [];
 
     def update(self):
         self.data = [(calcX(), calcY(), calcTheta(), calcW()) for i in range(self.n)];
-    
+
     def draw(self):
         canvas.drawParticles(self.data);
 
@@ -124,8 +124,8 @@ port = 2;
 interface.sensorEnable(port, brickpi.SensorType.SENSOR_ULTRASONIC);
 
 error = 0.2
-sdX = math.sqrt(2.1345/16)
-sdY = math.sqrt(2.1786/16)
+varX = 2.1345**2/50
+varY = 2.1786**2/50
 
 
 #while True:
@@ -137,7 +137,7 @@ sdY = math.sqrt(2.1786/16)
 #    particles.update();
 #    particles.draw();
 #    t += 0.05;
-#    time.sleep(0.05);    
+#    time.sleep(0.05);
 
 def calcM(x, y, t, Ax, Ay, Bx, By):
     top = (By - Ay) * (Ax - x) - (Bx - Ax) * (Ay - y)
@@ -151,7 +151,7 @@ def withinRange(x, y, Ax, Ay, Bx, By):
         return ((x < max(Ax, Bx)) and (x > min(Ax, Bx)))
     else:
         return False
-    
+
 def getWall(x, y, theta):
     global mymap
     wall = None
@@ -166,14 +166,15 @@ def getWall(x, y, theta):
     return wall
 
 sd = 0.48305
-#sd = 1
-K = 0.0000001
+K = 0.0000000001
 
 def calculateLikelihood(x, y, theta, z):
     wall = getWall(x, y, theta)
     m = wall[1]
     #print "top= ", float(-((z-m)**2))
     likelihood = math.exp(float(-((z-m)**2)) / (2*(sd**2)))
+    #print "dist to wall= ", m, "z= ", z, "like= ", likelihood
+
     #print "like= ", likelihood
     return likelihood + K
 
@@ -184,7 +185,8 @@ def move(angle):
     return
 
 def moveD(distance):
-    angle = distance * (4.95 / 10)
+    #angle = distance * (3.65 / 10)
+    angle = distance * (2.9 / 10)
     move(angle)
     updateCloudD(distance)
     return
@@ -196,23 +198,9 @@ def compare(reference, current, error) :
     else:
         return False
 
-def left90deg():
-    angle = 5.69
-    interface.increaseMotorAngleReferences(motors,[-angle,angle])
-    while (compare(interface.getMotorAngleReferences(motors), interface.getMotorAngles(motors), 0.1)):
-        continue
-    return
-
 def turn(angle):
     updateCloudT(angle)
-    angle = math.degrees(angle) * (5.69 / 90)
-    interface.increaseMotorAngleReferences(motors,[-angle,angle])
-    while (compare(interface.getMotorAngleReferences(motors), interface.getMotorAngles(motors), 0.1)):
-        continue
-    return
-
-def right90deg():
-    angle = -5.69
+    angle = math.degrees(angle) * (3.45 / 90)
     interface.increaseMotorAngleReferences(motors,[-angle,angle])
     while (compare(interface.getMotorAngleReferences(motors), interface.getMotorAngles(motors), 0.1)):
         continue
@@ -232,7 +220,7 @@ def stop():
 
 def updateCloudD(D):
     global particles
-    particles.data = [(x + (D + random.gauss(0, sdX))*math.cos(t), y + (D + random.gauss(0, sdX))*math.sin(t), t + random.gauss(0, 0.01), w) for (x, y, t, w) in particles.data]
+    particles.data = [(x + (D + random.gauss(0, math.sqrt(varX * D)))*math.cos(t), y + (D + random.gauss(0, math.sqrt(varY * D)))*math.sin(t), t + random.gauss(0, 0.01), w) for (x, y, t, w) in particles.data]
     return
 
 def updateCloudT(A):
@@ -249,6 +237,7 @@ def currentPosition():
 
 def navigateToWaypoint(X, Y):
     (x, y, t) = currentPosition()
+    print (x, y, math.degrees(t))
     dx, dy = X - x, Y - y
     a = math.atan2(dy, dx)
     b = a - t
@@ -258,9 +247,18 @@ def navigateToWaypoint(X, Y):
         b -= 2 * math.pi
     turn(b)
     stop()
-    #time.sleep(0.1)
+    print "degree: " , math.degrees(b)
+    particles.draw()
+    time.sleep(1)
+    MCL()
+    (x, y, t) = currentPosition()
+    print (x, y, t)
+    dx, dy = X - x, Y - y
     d = math.sqrt(dx**2 + dy**2)
     moveD(d)
+    stop()
+    particles.draw()
+    MCL()
     return
 
 def normalize():
@@ -274,12 +272,13 @@ def resample():
     parray = [0] * particles.n
     for i in range(0, particles.n):
         parray[i] = sum([w for (_,_,_,w) in particles.data[0:i + 1]])
+    #print parray
     newp = [0] * particles.n
     for i in range(0, particles.n):
         w = random.uniform(0, 1)
-        for j in range(1, particles.n):
+        for j in range(0, particles.n):
             if (parray[j] > w):
-                newp[i] = particles.data[j - 1]
+                newp[i] = particles.data[j]
                 break
     particles.data = newp
     #Set all w to 1/N
@@ -287,11 +286,17 @@ def resample():
     return
 
 def readSonar():
-    sumSonar = 0
-    for i in range(1,6):
-        sumSonar += interface.getSensorValue(port)[0]
-    meanSonar = sumSonar / 5
-    return meanSonar
+    readings = []
+    i = 0
+    while (i < 10):
+        r = interface.getSensorValue(port)[0]
+        if (r == 255):
+            i -= 1
+        else:
+            readings.append(r)
+        i += 1
+    #print(readings)
+    return max(set(readings), key = readings.count) + 6
 
 waypoints = [(84 ,30),
              (180, 30),
@@ -303,27 +308,24 @@ waypoints = [(84 ,30),
              (84, 84),
              (84, 30)]
 
+def MCL():
+    global particles
+    z = readSonar()
+    particles.data = [(x, y, t, calculateLikelihood(x, y, t, z)) for (x, y, t, w) in particles.data]
+    normalize()
+    resample()
+
 def wayPointNav():
     global particles
     particles.data = [(waypoints[0][0], waypoints[0][1], 0, float(1) / particles.n)] * particles.n
     particles.draw()
-    zP = [30, 30, 138, 42, 30, 84, 84, 30]
-    i = 0 
+    i = 0
     for waypoint in waypoints[1:]:
         navigateToWaypoint(waypoint[0], waypoint[1])
-        
-        z = readSonar()
-        z = zP[i]
-        i += 1
-        print "sonar = ", z
-        particles.data = [(x, y, t, calculateLikelihood(x, y, t, z)) for (x, y, t, w) in particles.data]
-        normalize()
-        resample()
-        
-        particles.draw()
         time.sleep(1)
+        particles.draw()
     return
-    
+
 def MCLTesting():
     global particles
     particles.data = [(0, 10, 0, float(1) / particles.n)] * particles.n
@@ -345,7 +347,62 @@ def MCLTesting():
             break
     return
 
-    
+
+
+
+def MCLT():
+    global particles
+    z = 16
+    particles.data = [(x, y, t, calculateLikelihood(x, y, t, z)) for (x, y, t, w) in particles.data]
+    normalize()
+    print particles.data
+    print "================================="
+    resample()
+    print particles.data
+    return
+
+def printCurr():
+    print currentPosition()
+    return
+
+def navigateToWaypointT(X, Y):
+    (x, y, t) = currentPosition()
+    dx, dy = X - x, Y - y
+    a = math.atan2(dy, dx)
+    b = a - t
+    if (b <= -math.pi):
+        b += 2 * math.pi
+    elif (b > math.pi):
+        b -= 2 * math.pi
+    turn(b)
+    print "degree: " , math.degrees(b)
+    stop()
+    time.sleep(2)
+    d = math.sqrt(dx**2 + dy**2)
+    moveD(d)
+    stop()
+
+    printCurr()
+    particles.draw()
+    time.sleep(2)
+    MCLT()
+    printCurr()
+    particles.draw()
+
+    return
+
+def wayPointNavTest():
+    global particles
+    particles.data = [(150, 10, 0, float(1) / particles.n)] * particles.n
+    particles.draw()
+    printCurr()
+    #zP = [30, 30, 138, 42, 30, 84, 84, 30]
+    navigateToWaypointT(190, 10)
+    return
+
+#turn(math.pi)
+moveD(150)
 particles.n = 100
+#wayPointNavTest()
 #MCLTesting()
-wayPointNav()
+#wayPointNav()

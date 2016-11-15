@@ -4,7 +4,7 @@ import time
 interface=brickpi.Interface()
 interface.initialize()
 
-motors = [0,1]
+motors = [3,1]
 
 interface.motorEnable(motors[0])
 interface.motorEnable(motors[1])
