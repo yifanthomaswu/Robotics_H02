@@ -27,17 +27,23 @@ interface.setMotorAngleControllerParameters(motors[1],motorParams)
 
 error = 0.2
 NUMBER_OF_PARTICLES = 100
-particles = [(0, 0, 0, 1/NUMBER_OF_PARTICLES)] * NUMBER_OF_PARTICLES
-offset = 90
+particles = [(0, 0, 0, float(0.01))] * NUMBER_OF_PARTICLES
+offset = 50
 scale = 15
-sdX = math.sqrt(2.1345/8)
-sdY = math.sqrt(2.1786/8)
+sdX = math.sqrt(2.1345/16)
+sdY = math.sqrt(2.1786/16)
 
 
 def move(angle):
     interface.increaseMotorAngleReferences(motors,[angle,angle])
     while (compare(interface.getMotorAngleReferences(motors), interface.getMotorAngles(motors), error)):
         continue
+    return
+
+def moveD(distance):
+    angle = distance * (4.95 / 10)
+    move(angle)
+    updateCloudD(distance)
     return
 
 def compare(reference, current, error) :
@@ -48,21 +54,29 @@ def compare(reference, current, error) :
         return False
 
 def left90deg():
-    angle = 4.4
+    angle = 5.69
+    interface.increaseMotorAngleReferences(motors,[-angle,angle])
+    while (compare(interface.getMotorAngleReferences(motors), interface.getMotorAngles(motors), 0.1)):
+        continue
+    return
+
+def turn(angle):
+    updateCloudT(angle)
+    angle = math.degrees(angle) * (5.69 / 90)
     interface.increaseMotorAngleReferences(motors,[-angle,angle])
     while (compare(interface.getMotorAngleReferences(motors), interface.getMotorAngles(motors), 0.1)):
         continue
     return
 
 def right90deg():
-    angle = -4.4
+    angle = -5.69
     interface.increaseMotorAngleReferences(motors,[-angle,angle])
     while (compare(interface.getMotorAngleReferences(motors), interface.getMotorAngles(motors), 0.1)):
         continue
     return
 
 def move10():
-    move(3.85)
+    move(4.95)
     #stop()
     time.sleep(1)
     return
@@ -83,7 +97,6 @@ def move40():
 
 def updateCloudD(D):
     global particles
-    print random.gauss(0, 1)
     particles = [(x + (D + random.gauss(0, sdX))*math.cos(t), y + (D + random.gauss(0, sdX))*math.sin(t), t + random.gauss(0, 0.01), w) for (x, y, t, w) in particles]
     return
 
@@ -113,31 +126,33 @@ def printCloud():
     time.sleep(0.25)
     return
 
+def currentPosition():
+    global particles
+    xBar = sum([(x * w) for x, _, _, w in particles])
+    yBar = sum([y * w for (_, y, _, w) in particles])
+    tBar = sum([t * w for (_, _, t, w) in particles])
+    return (xBar, yBar, tBar)
 
-
-
-printSquare()
-
-printCloud()
-
-move40()
-left90deg()
-updateCloudT(math.radians(90))
-printCloud()
-
-move40()
-left90deg()
-updateCloudT(math.radians(90))
-printCloud()
-
-move40()
-left90deg()
-updateCloudT(math.radians(90))
-printCloud()
-
-move40()
-left90deg()
-updateCloudT(math.radians(90))
-printCloud()
+def navigateToWaypoint(X, Y):
+    (x, y, t) = currentPosition()
+    dx, dy = X - x, Y - y
+    a = math.atan2(dy, dx)
+    b = a - t
+    if (b <= -math.pi):
+        b += 2 * math.pi
+    elif (b > math.pi):
+        b -= 2 * math.pi
+    turn(b)
+    stop()
+    #time.sleep(0.1)
+    d = math.sqrt(dx**2 + dy**2)
+    moveD(d)
+    
+    
+while (True):
+    X = input("Enter X coordinate: ")
+    Y = input("Enter Y coordinate: ")
+    navigateToWaypoint(X*100, Y*100)
+        
     
 interface.terminate()

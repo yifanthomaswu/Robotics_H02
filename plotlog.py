@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-with open("652.txt") as f:
+with open("log.txt") as f:
     data = f.read()
 
 data = data.split('\n')
@@ -19,10 +19,10 @@ del y3[-1]
 
 f, (ax1, ax2) = plt.subplots(1, 2)
 ax1.plot(x,y0, 'r')
-ax1.plot(x,y1, 'r')
+ax1.plot(x,y1, 'g')
 ax3 = ax1.twinx()
-ax3.plot(x,y2, 'g')
-ax3.plot(x,y3, 'g')
+ax3.plot(x,y2, 'b')
+ax3.plot(x,y3, 'y')
 
 for i in range(0,len(y0)):
   y0[i] = float(y0[i]) - float(y1[i])
