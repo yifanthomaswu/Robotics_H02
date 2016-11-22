@@ -97,7 +97,7 @@ class SignatureContainer():
             f = open(filename, 'r')
             for i in range(len(ls.sig)):
                 s = f.readline()
-                s = (s[1:len(s) - 1]).split(',')[0]
+                s = (s[1:len(s) - 1]).split('.')[0]
                 if (s != ''):
                     ls.sig[i] = int(s)
             f.close();
@@ -114,7 +114,7 @@ def readSonar():
         readings.append(r)
         i += 1
     #print(readings)
-    return max(set(readings), key = readings.count) + 2.5
+    return max(set(readings), key = readings.count) + 2
 
 def stop():
     interface.setMotorRotationSpeedReference(motor,0.01)
@@ -195,19 +195,19 @@ def characterize_location(ls):
             newangle = interface.getMotorAngle(sonar)[0]
             print math.degrees(abs(angle - newangle))
             angle = newangle
-        ls.sig[i] = (readSonar(), i * (math.pi * 2) / no)
+        ls.sig[i] = readSonar()
         interface.increaseMotorAngleReference(motor, (math.pi * 2) / no)
         while not interface.motorAngleReferenceReached(motor) :
             time.sleep(0.1)
         #stop()
-        time.sleep(1)
+        #time.sleep(1)
         newangle = interface.getMotorAngle(sonar)[0]
         print math.degrees(abs(angle - newangle))
-        print ls.sig[i][0]
         angle = newangle
-        x = 138
-        y = 54
-        l, a = ls.sig[i][0], ls.sig[i][1]
+        x = 84
+        y = 30
+        l = ls.sig[i]
+        a = i * (math.pi * 2) / no
         X = (math.cos(a) * l) + x
         Y = (math.sin(a) * l) + y
         canvas.drawLine((x, y, X, Y))
@@ -229,7 +229,7 @@ def print_loc(ls, x, y):
 def compare_signatures(ls1, ls2):
     dist = 0
     for i in range(len(ls2.sig)):
-        dist += (ls1.sig[i][0] - ls2.sig[i][0])**2
+        dist += (ls1.sig[i] - ls2.sig[i])**2
     return dist
 
 # This function characterizes the current location, and stores the obtained 
@@ -257,20 +257,70 @@ def learn_location():
 #      actual characterization is the smallest.
 # 4.   Display the index of the recognized location on the screen
 def recognize_location():
-    ls_obs = LocationSignature();
-    characterize_location(ls_obs);
+    ls_obs = LocationSignature()
+    characterize_location(ls_obs)
     lowest_dist = 30000000
     lowest_idx = -1
 
     # FILL IN: COMPARE ls_read with ls_obs and find the best match
     for idx in range(signatures.size):
         print "STATUS:  Comparing signature " + str(idx) + " with the observed signature."
-        ls_read = signatures.read(idx);
+        ls_read = signatures.read(idx)
         dist    = compare_signatures(ls_obs, ls_read)
         if(dist < lowest_dist):
             lowest_dist = dist
             lowest_idx = idx
-    return lowest_idx
+    print "Spot is probably ", lowest_idx + 1
+    return lowest_idx + 1
+
+def  create_invariant_signature(readings):
+    histogram = [0] * 260
+    for reading in readings.sig:
+        histogram[int(reading)] += 1
+    return histogram
+
+def compare_signatures_inv(ls1, ls2):
+    dist = 0
+    for i in range(len(ls2)):
+        dist += (ls1[i] - ls2[i])**2
+    return dist
+
+def compare_signatures_angle(ls1, ls2, j):
+    dist = 0
+    for i in range(len(ls2.sig)):
+        dist += (ls1.sig[i+j if (i+j) < 180 else (i+j) - 180] - ls2.sig[i])**2
+    return dist
+
+def calculate_angle(ls_sig, ls_obs):
+    lowest_dist = 30000000
+    angle = 0
+    for i in range(180):
+        dist    = compare_signatures_angle(ls_sig, ls_obs, i)
+        if(dist < lowest_dist):
+            lowest_dist = dist
+            angle = i
+    return angle * 2
+    
+def recognize_location_inv():
+    ls_obs = LocationSignature()
+    characterize_location(ls_obs)
+    lowest_dist = 30000000
+    lowest_idx = -1
+
+    # FILL IN: COMPARE ls_read with ls_obs and find the best match
+    for idx in range(signatures.size):
+        print "STATUS:  Comparing signature " + str(idx) + " with the observed signature."
+        ls_read = signatures.read(idx)
+        hist_ls_obs = create_invariant_signature(ls_obs)
+        hist_ls_read = create_invariant_signature(ls_read)
+        dist = compare_signatures_inv(hist_ls_obs, hist_ls_read)
+        if(dist < lowest_dist):
+            lowest_dist = dist
+            lowest_idx = idx
+    angle = calculate_angle(signatures.read(lowest_idx), ls_obs)
+    print "Spot is probably ", lowest_idx + 1,
+    print " with angle of ", angle
+    return lowest_idx + 1
             
 
 # Prior to starting learning the locations, it should delete files from previous
@@ -281,7 +331,7 @@ def recognize_location():
 signatures = SignatureContainer(5);
 #signatures.delete_loc_files()
 
-learn_location();
-#recognize_location();
+#learn_location();
+recognize_location_inv();
 
 
