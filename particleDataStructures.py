@@ -165,7 +165,8 @@ def getWall(x, y, theta):
                 wall = ((Ax, Ay, Bx, By), m)
     return wall
 
-sd = 0.48305
+#sd = 0.48305
+sd = 2.0
 K = 0.0000000001
 
 def calculateLikelihood(x, y, theta, z):
@@ -200,7 +201,7 @@ def compare(reference, current, error) :
 
 def turn(angle):
     updateCloudT(angle)
-    angle = math.degrees(angle) * (3.4 / 90)
+    angle = math.degrees(angle) * (3.45 / 90)
     interface.increaseMotorAngleReferences(motors,[-angle,angle])
     while (compare(interface.getMotorAngleReferences(motors), interface.getMotorAngles(motors), 0.1)):
         continue
@@ -220,12 +221,12 @@ def stop():
 
 def updateCloudD(D):
     global particles
-    particles.data = [(x + (D + random.gauss(0, math.sqrt(varX * D)))*math.cos(t), y + (D + random.gauss(0, math.sqrt(varY * D)))*math.sin(t), t + random.gauss(0, 0.01), w) for (x, y, t, w) in particles.data]
+    particles.data = [(x + (D + random.gauss(0, math.sqrt(varX * D)))*math.cos(t), y + (D + random.gauss(0, math.sqrt(varY * D)))*math.sin(t), t + random.gauss(0, 0.02), w) for (x, y, t, w) in particles.data]
     return
 
 def updateCloudT(A):
     global particles
-    particles.data = [(x, y, t + A + random.gauss(0, 0.01), w) for (x, y, t, w) in particles.data]
+    particles.data = [(x, y, t + A + random.gauss(0, 0.05), w) for (x, y, t, w) in particles.data]
     return
 
 def currentPosition():
@@ -255,11 +256,37 @@ def navigateToWaypoint(X, Y):
     print (x, y, t)
     dx, dy = X - x, Y - y
     d = math.sqrt(dx**2 + dy**2)
-    moveD(d)
-    stop()
-    particles.draw()
-    MCL()
+    if (d < 20):
+        moveD(d)
+        stop()
+        particles.draw()
+        MCL()
+    else:
+        D = 20
+        moveD(D)
+        stop()
+        particles.draw()
+        time.sleep(1)
+        MCL()
+        navigateToWaypoint(X, Y)
     return
+
+def calibrate():
+    turn(math.pi/2)
+    stop()
+    time.sleep(0.5)
+    MCL()
+    particles.draw()
+    turn(-math.pi)
+    stop()
+    time.sleep(0.5)
+    MCL()
+    particles.draw()
+    turn(math.pi/2)
+    stop()
+    time.sleep(0.5)
+    return
+    
 
 def normalize():
     global particles
@@ -299,12 +326,12 @@ def readSonar():
     return max(set(readings), key = readings.count) + 6
 
 waypoints = [(84 ,30),
-             (180, 30),
-             (180, 54),
-             (138, 54),
-             (138, 168),
-             (114, 168),
-             (114, 84),
+             (84, 20),
+             (195, 20),
+             (195, 45),
+             (126, 45),
+             (195, 70),
+             (153, 70),
              (84, 84),
              (84, 30)]
 
@@ -347,64 +374,5 @@ def MCLTesting():
             break
     return
 
-
-
-
-def MCLT():
-    global particles
-    z = 16
-    particles.data = [(x, y, t, calculateLikelihood(x, y, t, z)) for (x, y, t, w) in particles.data]
-    normalize()
-    print particles.data
-    print "================================="
-    resample()
-    print particles.data
-    return
-    
-def printCurr():
-    print currentPosition()
-    return
-
-def navigateToWaypointT(X, Y):
-    (x, y, t) = currentPosition()
-    dx, dy = X - x, Y - y
-    a = math.atan2(dy, dx)
-    b = a - t
-    if (b <= -math.pi):
-        b += 2 * math.pi
-    elif (b > math.pi):
-        b -= 2 * math.pi
-    turn(b)
-    print "degree: " , math.degrees(b)
-    stop()
-    time.sleep(2)
-    d = math.sqrt(dx**2 + dy**2)
-    moveD(d)
-    stop()
-    
-    printCurr()
-    particles.draw()
-    time.sleep(2)
-    MCLT()
-    printCurr()
-    particles.draw()
-    
-    return
-
-def wayPointNavTest():
-    global particles
-    particles.data = [(150, 10, 0, float(1) / particles.n)] * particles.n
-    particles.draw()
-    printCurr()
-    #zP = [30, 30, 138, 42, 30, 84, 84, 30]
-    navigateToWaypointT(190, 10)
-    return
-
-turn(-math.pi/2)
-stop()
-time.sleep(1)
-moveD(100)
 particles.n = 100
-#wayPointNavTest()
-#MCLTesting()
-#wayPointNav()
+wayPointNav()
