@@ -326,12 +326,12 @@ def readSonar():
     return max(set(readings), key = readings.count) + 6
 
 waypoints = [(84 ,30),
-             (180, 30),
-             (180, 54),
-             (138, 54),
-             (138, 168),
-             (114, 168),
-             (114, 84),
+             (84, 20),
+             (195, 20),
+             (195, 45),
+             (126, 45),
+             (195, 70),
+             (153, 70),
              (84, 84),
              (84, 30)]
 
@@ -375,6 +375,9 @@ def MCLTesting():
     return
 
 particles.n = 100
+<<<<<<< HEAD
+wayPointNav()
+=======
 #wayPointNav()
 smotor=[2]
 interface.motorEnable(smotor[0])
@@ -384,3 +387,4 @@ interface.setMotorAngleReference(2,200)
 while not interface.motorAngleReferencesReached(smotor) :
     print interface.getMotorAngles(smotor)
     time.sleep(0.1)
+>>>>>>> 4fffaf574be69265640e056af3879ac6806269b3

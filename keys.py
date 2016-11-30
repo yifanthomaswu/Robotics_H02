@@ -4,7 +4,7 @@ import brickpi
 interface=brickpi.Interface()
 interface.initialize()
 
-motors = [1,3]
+motors = [1,2]
 
 interface.motorEnable(motors[0])
 interface.motorEnable(motors[1])
@@ -43,7 +43,7 @@ curses.cbreak()
 # map arrow keys to special values
 screen.keypad(True)
 
-speed = 10
+speed = 4
 
 try:
  while True:
