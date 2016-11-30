@@ -375,4 +375,16 @@ def MCLTesting():
     return
 
 particles.n = 100
+<<<<<<< HEAD
 wayPointNav()
+=======
+#wayPointNav()
+smotor=[2]
+interface.motorEnable(smotor[0])
+interface.setMotorAngleControllerParameters(smotor[0],motorParams)
+
+interface.setMotorAngleReference(2,200)
+while not interface.motorAngleReferencesReached(smotor) :
+    print interface.getMotorAngles(smotor)
+    time.sleep(0.1)
+>>>>>>> 4fffaf574be69265640e056af3879ac6806269b3
